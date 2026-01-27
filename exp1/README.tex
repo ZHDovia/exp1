@@ -1,0 +1,179 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{enumerate}
+\usepackage{multicol}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\graphicspath{{./}{results/}}
+\usepackage[left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm]{geometry}
+\title{\Huge BM3D Algorithm Experiment}
+\author{Li Xinchen}
+\date{\today}
+\begin{document}
+	
+	\maketitle
+	\begin{multicols}{2}
+		\section{Introduction}
+		This experiment uses the Set14 dataset to simulate the addition of Gaussian noise and salt-and-pepper noise, and employs the BM3D algorithm for image denoising. As I had no prior experience with Python, this experiment utilized AI-assisted code generation, followed by theoretical self-study and further code modifications.
+		
+		\section{Main Content}  
+		
+		\subsection{Theoretical Formula Description of Noise Models}
+		
+		\begin{itemize}
+			
+			\subsubsection{Gaussian Noise}
+			
+			\item Characteristics:\\
+			The brightness value of each pixel in the image undergoes random small fluctuations around its original value.
+			
+			\item Mathematical Model:
+			\[ I_{noisy}(x,y) = I_{original}(x,y) + \eta(x,y) \]
+			\[  \eta(x,y) \sim N(0, {\rho}^2)\]			
+			following a Gaussian distribution. $\rho$ is the standard deviation, controlling the noise intensity.
+			
+			\item Implementation Principle:\\
+				\normalsize(1)def add\underline{ }gaussian\underline{ }noise(img, sigma=25):\\
+					\footnotesize {sigma represents the noise standard deviation, default 25, range(0–255)}\\
+				\normalsize(2)noise = np.random.normal(0, sigma, img.shape)\\
+					\footnotesize{ 0 indicates noise is symmetrically distributed around 0, not altering overall brightness; img.shape generates a noise matrix matching the image size.}\\
+				\normalsize(3)	noisy = img.astype(float) + noise\\
+					\footnotesize Overlay the original image with noise; cv2.imread() defaults to uint8 data type, so convert to float to prevent overflow.\\
+				\normalsize(4)return np.clip(noisy, 0, 255).astype(np.uint8)\\
+					\footnotesize Clip values to 0–255 and convert back to standard uint8 image format.\\
+					
+			\subsubsection{Salt-and-Pepper Noise}
+			
+			\item Characteristics:\\
+			An extreme impulse noise appearing as pure black (0) or pure white (255) pixels in the image.
+			
+			\item Mathematical Model:
+			\[For\ each\ pixel\ position\ (x,y):\]
+			\[I_{noisy}(x,y) =
+			\begin{cases} 0,\ \ \ \ \ \ \ \ \ with\ probability\ p1  (pepper noise)\\
+					255,\ \ \ \ \ \ with\ probability\ p2\ (salt noise) \\
+					I(x,y),\ \ with\ probability\ 1-p1-p2\ \\ \ \ \ \ \ \ \ \ \ \ \ \ (retain\ original\ value)	
+			\end{cases}\]
+			
+			\item Implementation Principle:\\
+				\normalsize(1)def add\underline{ }salt\underline{ }pepper\underline{ }noise(img, prob=0.05):\\
+					\footnotesize prob represents the noise density parameter, default 0.05, range [0,1]\\
+				\normalsize(2)noisy = img.copy()\\
+					\footnotesize Create a copy of the original image without altering original memory.\\
+				\normalsize(3)rnd = np.random.random(img.shape)\\
+					\footnotesize Generate a random number matrix within the image’s dimensional range, each value in [0,1).\\
+				\normalsize(4)noisy[rnd < prob/2] = 0\\  
+					\footnotesize Add pepper noise: assign 0 when random number < prob/2.\\
+				\normalsize(5)noisy[rnd > 1-prob/2] = 255\\
+					\footnotesize Add salt noise: assign 255 when random number > 1-prob/2.\\
+				\normalsize(6) return noisy.astype(np.uint8)\\
+					\footnotesize Return the function, preserving image data.\\
+		\end{itemize}
+		
+		\subsection{BM3D Algorithm Principle and Steps}
+			\subsubsection{Introduction}
+			BM3D (Block-Matching and 3D Filtering) is widely recognized as one of the most effective image denoising algorithms. It innovatively extends 2D image processing into 3D space, fully leveraging the self-similarity characteristics of natural images.
+			\subsubsection{Two-Stage Processing Flowls}
+			\begin{itemize}
+				\item  Basic Estimation (Hard-Thresholding Filtering)\\
+				1. Reference Block Extraction: Divide the image into overlapping small blocks (typically 8×8 pixels)\\
+				2. Block Matching: For each reference block, search for similar blocks across the entire image\\
+				3. 3D Grouping: Stack similar blocks to form a 3D array\\
+				4. 3D Transform: Apply transformations to the 3D array (2D DCT for spatial dimensions, 1D Haar transform for the block dimension)\\
+				5. Collaborative Hard-Thresholding Filtering: Separate signal from noise via thresholding\\
+				6. Inverse 3D Transform: Transform the filtered result back to the spatial domain\\
+				7. Block Aggregation: Fuse the processed blocks into a complete image via weighted averaging
+				
+				\item Final Estimation (Wiener Filtering)\\
+				1. Guided Matching: Use the denoised result from Stage 1 as a reference to re-match similar blocks in the noisy image\\
+				2. Dual-Channel Grouping: Group similar blocks from both the noisy image and the basic estimate image simultaneously\\
+				3. 3D Transform: Apply 3D transforms to both groups of 3D arrays\\
+				4. Collaborative Wiener Filtering: Adaptively adjust filtering strength based on the local signal-to-noise ratio\\
+				5. Inverse Transform and Aggregation: Obtain the final denoised result\\
+			\end{itemize}
+			\subsubsection{Two-Stage Processing Flowls}
+				\begin{itemize}
+					\item Block Matching Strategy
+					Euclidean distance is used to measure block similarity:
+					\[  d(P\underline{ }1, P\underline{ }2) = \sum\limits_{i=1}^{N} (P\underline{ }1[i] - P\underline{ }2[i])^2\]
+					Only the top N blocks with the smallest distances are retained, ensuring that truly similar structures are found.
+					\item Collaborative Filtering Principle\\
+					 Signal Enhancement: Signal components reside at the same positions in the transform domain across similar blocks, allowing their energies to superimpose.\\
+					 Noise Suppression: Noise is independently distributed across different blocks and does not experience enhancement.\\
+					 Separation Effect: Thresholding enables a clearer distinction between signal and noise components.
+					 \item Hard-Thresholding vs Wiener Filtering
+					 Hard-Thresholding: Simple and direct, preserves significant signals and removes weak noise.
+					 \[ \hat{T}(i) = \begin{cases} T(i), & |T(i)| \geq \lambda\sigma \\ 0, & |T(i)| < \lambda\sigma \end{cases}  \]
+					 Wiener Filtering: Adaptively adjusts based on the local SNR, achieving optimal linear estimation.
+					 \[ W = \frac{|X_{\text{basic}}|^2}{|X_{\text{basic}}|^2 + \sigma^2} \]
+					 \item Aggregation Mechanism
+					 Since the processing involves significant overlap between image blocks, each pixel is covered by multiple blocks. BM3D uses weighted averaging for fusion:
+					 \[ \hat{I}(x,y) = \frac{\sum_k w_k \cdot \hat{I}_k(x,y)}{\sum_k w_k} \]
+				\end{itemize}
+			\subsubsection{ Analysis of Algorithm Advantages}
+			1. Non-Local Processing: Breaks the limitations of traditional local filtering by utilizing similar information from across the entire image.\\
+			2. 3D Transformation: Separates signal and noise in a higher dimension, yielding more significant results.\\
+			3. Collaborative Enhancement: Joint processing of similar blocks produces a synergistic "1+1>2" effect.\\
+			4. Complementary Two-Stage Design: Hard-thresholding preserves details, while Wiener filtering smoothens noise, achieving an optimal balance.\\
+			5. Adaptive Adjustment: Automatically adjusts filtering strength based on local characteristics.
+			
+			\subsubsection{ Practical Application Performance}
+			\begin{verbatim}
+				def bm3d_denoise(img, sigma):
+				img_normalized = img.astype(np.float32)/255.0
+				denoised = bm3d.bm3d(img_normalized, 
+				sigma_psd=sigma/255.0)
+				return (denoised * 255).clip(0, 255).astype(np.uint8)
+			\end{verbatim}
+	\end{multicols}
+		\section{Comparison of Images Before and After Adding Noise}
+
+			\begin{figure}[htbp]
+				\centering
+				\includegraphics[width=0.6\linewidth]{1.jpg}
+				\caption{Original Image}
+				\label{fig:original}
+			\end{figure}
+			
+			\begin{figure}[htbp]
+				\centering
+				\begin{minipage}{0.48\textwidth}
+					\centering
+					\includegraphics[width=0.95\linewidth]{results/gaussian_noisy.jpg}
+					\caption*{(a) Add Gaussian Noise}
+					\label{fig:gaussian_noisy}
+				\end{minipage}
+				\hfill
+				\begin{minipage}{0.48\textwidth}
+					\centering
+					\includegraphics[width=0.95\linewidth]{results/gaussian_result_bm3d.jpg}
+					\caption*{(b) BM3D Denoising Result}
+					\label{fig:gaussian_result}
+				\end{minipage}
+				\caption{Gaussian Noise Removal Experiment}
+				\label{fig:comparison_gaussian}
+			\end{figure}
+			
+			\begin{figure}[htbp]
+				\centering
+				\begin{minipage}{0.48\textwidth}
+					\centering
+					\includegraphics[width=0.95\linewidth]{results/saltpepper_noisy.jpg}
+					\caption*{(a) Add Salt-and-Pepper Noise}
+					\label{fig:saltpepper_noisy}
+				\end{minipage}
+				\hfill
+				\begin{minipage}{0.48\textwidth}
+					\centering
+					\includegraphics[width=0.95\linewidth]{results/saltpepper_result_bm3d.jpg}
+					\caption*{(b) BM3D Denoising Result}
+					\label{fig:saltpepper_result}
+				\end{minipage}
+				\caption{Salt-and-Pepper Noise Removal Experiment}
+				\label{fig:comparison_saltpepper}
+			\end{figure}   
+
+\end{document}
