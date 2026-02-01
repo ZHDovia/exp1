@@ -1,0 +1,142 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{enumerate}
+\usepackage{multicol}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{float}
+\usepackage{microtype}
+\usepackage{array}
+
+% 设置页面边距
+\usepackage[left=1.2cm,right=1.2cm,top=1.5cm,bottom=1.5cm]{geometry}
+
+\title{\normalsize\textbf{Comparison Study of ISTA and BM3D Algorithms for Image Denoising}}
+\author{Li Xinchen}
+\date{\today}
+
+\begin{document}
+	
+	\twocolumn  % 全文双栏
+	
+	\maketitle
+	
+	\begin{abstract}
+		\footnotesize
+		This paper compares the Iterative Shrinkage-Thresholding Algorithm (ISTA) and Block-Matching and 3D Filtering algorithm (BM3D) for image denoising. Experimental results show BM3D significantly outperforms ISTA in quality, particularly for mixed noise, while ISTA offers better computational efficiency.
+	\end{abstract}
+	
+	\section{Introduction}
+	\footnotesize
+	This study compares ISTA and BM3D denoising algorithms. ISTA uses optimization theory while BM3D uses statistical methodology. Experiments quantify performance differences between these approaches.
+	
+	\section{Experimental Results}
+	
+	\subsection{Quantitative Results}
+	\footnotesize
+	\begin{table}[H]
+		\centering
+		\caption{Performance Comparison Results}
+		\scriptsize
+		\begin{tabular}{@{}lccccc@{}}
+			\toprule
+			\textbf{Noise Type} & \textbf{Alg.} & \textbf{PSNR (dB)} & \textbf{SSIM} & \textbf{Time (s)} \\
+			\midrule
+			Gaussian $\sigma=50$ & ISTA & 12.90 & 0.1579 & 0.049 \\
+			& BM3D & 26.81 & 0.8109 & 9.713 \\
+			\midrule
+			Mixed $\sigma=25$, $p=0.1$ & ISTA & 11.10 & 0.1514 & 0.049 \\
+			& BM3D & 25.81 & 0.7634 & 9.645 \\
+			\midrule
+			Mixed $\sigma=50$, $p=0.2$ & ISTA & 8.55 & 0.0753 & 0.497 \\
+			& BM3D & 20.48 & 0.4346 & 10.399 \\
+			\midrule
+			Mixed $\sigma=75$, $p=0.3$ & ISTA & 7.65 & 0.0466 & 0.054 \\
+			& BM3D & 17.42 & 0.3010 & 11.800 \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\subsection{Visual Results}
+	\footnotesize
+	Figure 1 shows denoising results for mixed noise ($\sigma=50$, $p=0.2$):
+	
+	\begin{figure}[H]
+		\centering
+		
+		% 尝试多种加载方式
+		% 方式1：直接加载（最常用）
+		\includegraphics[width=0.48\linewidth]{./results/original.png}
+		\hfill
+		\includegraphics[width=0.48\linewidth]{./results/mixed_noisy.png}
+		
+		\vspace{0.2cm}
+		
+		\includegraphics[width=0.48\linewidth]{./results/ista_result.png}
+		\hfill
+		\includegraphics[width=0.48\linewidth]{./results/bm3d_result.png}
+		
+		\caption{Denoising results for mixed noise ($\sigma=50$, $p=0.2$). Top: Original and noisy images. Bottom: ISTA and BM3D results.}
+		\label{fig:results}
+	\end{figure}
+	
+	\section{Analysis}
+	
+	\subsection{Algorithm Comparison}
+	\footnotesize
+	\textbf{BM3D Advantages:}
+	\begin{itemize}
+		\item Non-local similarity
+		\item 3D collaborative filtering  
+		\item Two-stage processing
+		\item Robust to mixed noise
+	\end{itemize}
+	
+	\textbf{ISTA Limitations:}
+	\begin{itemize}
+		\item Pixel sparsity assumption
+		\item Local processing only
+		\item Sensitive to parameters
+		\item Poor with impulse noise
+	\end{itemize}
+	
+	\subsection{Time Analysis}
+	\footnotesize
+	\begin{table}[H]
+		\centering
+		\caption{Computational Efficiency}
+		\scriptsize
+		\begin{tabular}{@{}lccc@{}}
+			\toprule
+			\textbf{Noise Type} & \textbf{ISTA Time (s)} & \textbf{BM3D Time (s)} & \textbf{Speedup} \\
+			\midrule
+			Gaussian $\sigma=50$ & 0.049 & 9.713 & 199.4× \\
+			Mixed $\sigma=25$, $p=0.1$ & 0.049 & 9.645 & 196.3× \\
+			Mixed $\sigma=50$, $p=0.2$ & 0.497 & 10.399 & 20.9× \\
+			Mixed $\sigma=75$, $p=0.3$ & 0.054 & 11.800 & 217.2× \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\section{Conclusion}
+	
+	\subsection{Summary}
+	\footnotesize
+	Key findings:
+	\begin{enumerate}
+		\item BM3D: +9.77 to +14.72 dB PSNR advantage
+		\item ISTA: 20-200 times faster
+		\item BM3D: 3-5× higher SSIM
+		\item BM3D more robust to mixed noise
+	\end{enumerate}
+	
+\end{document}
